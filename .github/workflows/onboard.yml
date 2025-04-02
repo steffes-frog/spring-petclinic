@@ -1,0 +1,55 @@
+name: Java CI with Maven + Docker
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  id-token: write     # Required for OIDC. This is required for requesting the JWT
+  contents: read      # This is required for actions/checkout
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+#    env:
+#      JF_PROJECT: ${{ vars.JF_PROJECT_KEY }}
+#      JF_URL: https://${{ vars.JF_URL }}/
+    strategy:
+      matrix:
+        java: [ '17' ]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ matrix.java }}
+          distribution: 'adopt'
+          cache: maven
+
+      - uses: jfrog/setup-jfrog-cli@v4
+        id: setup-cli
+        name: Setup JFrog CLI
+        env:
+          JF_URL: https://${{ vars.JF_URL }}/
+          # JF_PROJECT: ${{ vars.JF_PROJECT }}
+        with:
+          oidc-provider-name: setup-jfrog-cli
+
+      - name: Build and Test with Maven
+        run: ./mvnw -B verify
+
+      - name: Docker Login to JFrog
+        run: jfrog rt docker-login ${{ vars.ARTIFACTORY_DOCKER_REGISTRY }}
+
+      - name: Build Docker Image with Spring Boot
+        run: |
+          ./mvnw spring-boot:build-image \
+          -Dspring-boot.build-image.imageName=${{ vars.ARTIFACTORY_DOCKER_REGISTRY }}/my-java-app:latest
+
+      - name: Push Docker Image to JFrog
+        run: docker push ${{ vars.ARTIFACTORY_DOCKER_REGISTRY }}/my-java-app:latest
