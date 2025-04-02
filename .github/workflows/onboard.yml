@@ -38,7 +38,7 @@ jobs:
           JF_URL: https://${{ vars.JF_URL }}/
           # JF_PROJECT: ${{ vars.JF_PROJECT }}
         with:
-          oidc-provider-name: jfrog-github-oidc
+          oidc-provider-name: setup-jfrog-cli
 
       - name: Build and Test with Maven
         run: ./mvnw -B verify
